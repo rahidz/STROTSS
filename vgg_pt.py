@@ -9,6 +9,8 @@ from torchvision import models
 import numpy as np
 
 ssl._create_default_https_context = ssl._create_unverified_context
+use_random = True
+
 
 class Vgg16_pt(torch.nn.Module):
     def __init__(self, requires_grad=False):
@@ -32,12 +34,19 @@ class Vgg16_pt(torch.nn.Module):
                 param.requires_grad = False
 
         self.inds = range(11)
-
+        
+        mean = torch.Tensor([0.485, 0.456, 0.406]).view(1,3,1,1)
+        std = torch.Tensor([0.229, 0.224, 0.225]).view(1,3,1,1)
+        
+        self.register_buffer('mu', mean)
+        self.register_buffer('sig', std)
 
     def forward_base(self,X,rand):
         inds = self.inds
 
-        x = X
+        x = (X-self.mu)/self.sig
+
+
         l2 = [X]
         for i in range(30):
             try:
@@ -86,9 +95,14 @@ class Vgg16_pt(torch.nn.Module):
         
         xc = xc[region_mask,:]
 
-        np.random.shuffle(xc)
-
         const2 = min(samps,xc.shape[0])
+
+
+        global use_random
+        if use_random:
+            np.random.shuffle(xc)
+        else:
+            xc = xc[::(xc.shape[0]//const2),:]
 
         xx = xc[:const2,0]
         yy = xc[:const2,1]
